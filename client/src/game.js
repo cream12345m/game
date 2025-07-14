@@ -11,7 +11,7 @@ class TankGameClient {
         // Get parameters from URL
         this.gameParams = this.getUrlParameters();
         this.username = this.gameParams.username || 'Player';
-        this.serverUrl = this.gameParams.server || 'localhost:8000';
+        this.serverUrl = this.gameParams.server || window.location.origin;
         
         this.socket = io(this.serverUrl);
         
