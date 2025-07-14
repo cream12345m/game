@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tank Deathmatch - Game</title>
+    <style>
+        html, body {
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #F3F3F3;
+            color: white;
+            user-select: none;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            background: #F3F3F3;
+        }
+        #gameCanvas {
+            border: none;
+            background: transparent;
+            cursor: none;
+            width: 100vw;
+            height: 66.666vh;
+            max-width: 100vw;
+            max-height: 100vh;
+            aspect-ratio: 3 / 2;
+            display: block;
+            object-fit: contain;
+            box-sizing: border-box;
+        }
+        .canvas-wrapper {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+        }
+        @media (max-aspect-ratio: 3/2) {
+            #gameCanvas {
+                width: calc(100vh * 3 / 2);
+                height: 100vh;
+            }
+        }
+        @media (min-aspect-ratio: 3/2) {
+            #gameCanvas {
+                width: 100vw;
+                height: calc(100vw * 2 / 3);
+            }
+        }
+        #ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 10;
+        }
+        #scoreboard, #playerInfo, #controls, #gameStats {
+            pointer-events: auto;
+            backdrop-filter: blur(10px);
+        }
+        #scoreboard {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(0, 0, 0, 0.85);
+            border: 1px solid #333;
+            border-radius: 10px;
+            padding: 15px;
+            min-width: 160px;
+            max-width: 220px;
+            pointer-events: none;
+        }
+        #scoreboard h3 {
+            margin-bottom: 10px;
+            color: #ffd700;
+            text-align: center;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        .player-score {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+        .player-score.you {
+            background: rgba(0, 255, 0, 0.15);
+            border: 1px solid #00ff00;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+        }
+        #playerInfo {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(0, 0, 0, 0.85);
+            border: 1px solid #333;
+            border-radius: 10px;
+            padding: 15px;
+            min-width: 160px;
+        }
+        #playerInfo h4 {
+            color: #ffd700;
+            margin-bottom: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+        #playerInfo div {
+            margin: 5px 0;
+            font-size: 0.9rem;
+        }
+        #healthBar {
+            width: 100%;
+            height: 12px;
+            background: #333;
+            border-radius: 6px;
+            overflow: hidden;
+            margin: 8px 0;
+            border: 1px solid #555;
+        }
+        #healthFill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff0000, #ffff00, #00ff00);
+            transition: width 0.3s ease;
+            border-radius: 5px;
+        }
+        #controls {
+            pointer-events: none;
+            background: rgba(255,255,255,0.92);
+            color: #888;
+            border-radius: 8px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+            border: 1px solid #EAEAEA;
+            padding: 4px 7px 4px 7px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 0.78rem;
+            min-width: 120px;
+            max-width: 160px;
+        }
+        #controls h4 {
+            color: #FFD600;
+            font-size: 0.88rem;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        .control-row {
+            margin: 2px 0;
+            font-size: 0.78rem;
+        }
+        .key {
+            background: #F3F3F3;
+            border: 1px solid #B4B4B4;
+            border-radius: 4px;
+            padding: 1px 5px;
+            margin: 0 2px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            min-width: 12px;
+            text-align: center;
+            color: #444;
+        }
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            border: 2px solid #ff0000;
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            display: none;
+            pointer-events: auto;
+            backdrop-filter: blur(15px);
+            box-shadow: 0 0 30px rgba(255, 0, 0, 0.3);
+        }
+        #gameOver h2 {
+            color: #ff0000;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+            font-weight: bold;
+        }
+        #respawnTimer {
+            font-size: 1.2rem;
+            color: #ffd700;
+            margin: 20px 0;
+            font-weight: 600;
+        }
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        .spinner {
+            border: 4px solid #333;
+            border-top: 4px solid #ffd700;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        #menuButton {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 10px 15px;
+            color: white;
+            cursor: pointer;
+            z-index: 20;
+            font-family: inherit;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+        #menuButton:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: #ffd700;
+        }
+        #gameStats {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: none;
+            border-radius: 0;
+            border: none;
+            box-shadow: none;
+            padding: 0 0;
+            display: flex;
+            gap: 18px;
+            font-size: 0.98rem;
+            color: #222;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-weight: 500;
+        }
+        .stat-value {
+            color: #000;
+            font-weight: bold;
+            font-size: 1.02em;
+        }
+        .key {
+            background: #F3F3F3;
+            border: 1.5px solid #B4B4B4;
+            border-radius: 5px;
+            padding: 2px 7px;
+            margin: 0 4px;
+            font-size: 0.92rem;
+            font-weight: 600;
+            min-width: 18px;
+            text-align: center;
+            color: #222;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div class="canvas-wrapper">
+            <canvas id="gameCanvas" width="1200" height="800"></canvas>
+        </div>
+        <div id="ui">
+            <div id="scoreboard">
+                <h3>🏆 Leaderboard</h3>
+                <div id="scoreboardContent"></div>
+            </div>
+            <div id="gameStats">
+                <div class="stat-item">
+                    <span>Players:</span>
+                    <span class="stat-value" id="playerCount">0</span>
+                </div>
+                <div class="stat-item">
+                    <span>FPS:</span>
+                    <span class="stat-value" id="fpsCounter">60</span>
+                </div>
+                <div class="stat-item">
+                    <span>Ping:</span>
+                    <span class="stat-value" id="pingValue">0ms</span>
+                </div>
+            </div>
+            <div id="controls">
+                <h4>🎮 Controls</h4>
+                <div class="control-row">
+                    <span class="key">WASD</span> or <span class="key">↑↓←→</span> Move
+                </div>
+                <div class="control-row">
+                    <span class="key">MOUSE</span> Aim
+                </div>
+                <div class="control-row">
+                    <span class="key">CLICK</span> Shoot
+                </div>
+                <div class="control-row">
+                    <span class="key">P</span> (hold) Quit to Menu
+                </div>
+            </div>
+            <div id="gameOver">
+                <h2>💀 YOU DIED!</h2>
+                <div id="respawnTimer">Spectating killer... Returning to menu in 5</div>
+                <p>Killed by: <span id="killerName" style="color:#ffd700">Unknown</span></p>
+                <p style="color:#aaa;font-size:0.95rem;">You will spectate your killer for a few seconds, then return to the menu.</p>
+            </div>
+        </div>
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <div>Connecting to server...</div>
+        </div>
+        <div id="quitOverlay" style="display:none; position:absolute; left:0; top:0; width:100vw; height:100vh; z-index:100; pointer-events:none;">
+            <div id="quitBarContainer" style="position:absolute; left:50%; top:calc(50% - 60px); transform:translateX(-50%); min-width:90px; max-width:120px; height:16px; background:#eee; border-radius:4px; overflow:hidden; border:1.2px solid #B4B4B4; display:flex; align-items:center; padding:0 4px;">
+                <div id="quitBar" style="height:100%; width:0; background:#FFD600; transition:width 0.1s;"></div>
+                <span id="quitText" style="position:absolute; left:0; width:100%; text-align:center; color:#222; font-size:0.78rem; font-weight:600; letter-spacing:0.2px;">Hold <span style='color:#FFD600;'>P</span> to Quit</span>
+            </div>
+        </div>
+    </div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="game.js"></script>
+    <script>
+        // Responsive canvas
+        function resizeCanvas() {
+            const canvas = document.getElementById('gameCanvas');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        window.addEventListener('DOMContentLoaded', resizeCanvas);
+    </script>
+</body>
+</html> 

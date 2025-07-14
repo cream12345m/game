@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tank Deathmatch - Menu</title>
+    <style>
+        html, body {
+            height: 100%;
+            width: 100%;
+        }
+        body {
+            min-height: 100vh;
+            min-width: 100vw;
+            height: 100vh;
+            width: 100vw;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #23243a, #1a1a2e 80%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .menu-container {
+            background: rgba(0,0,0,0.85);
+            border-radius: 16px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.3);
+            padding: 32px 24px 28px 24px;
+            width: 100%;
+            max-width: 350px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .game-title {
+            color: #ffd700;
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 28px;
+            text-align: center;
+        }
+        label {
+            color: #ffd700;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 1rem;
+            display: block;
+        }
+        #username {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 2px solid #333;
+            background: #181828;
+            color: #fff;
+            font-size: 1rem;
+            margin-bottom: 24px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        #username:focus {
+            border-color: #ffd700;
+        }
+        .btn {
+            width: 100%;
+            padding: 14px 0;
+            border-radius: 8px;
+            border: none;
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            color: #222;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s, box-shadow 0.2s;
+            box-shadow: 0 2px 8px rgba(255,215,0,0.08);
+        }
+        .btn:active {
+            background: #ffd700;
+        }
+        .error-message {
+            color: #ff6b6b;
+            margin: 10px 0 0 0;
+            font-size: 0.95rem;
+            text-align: center;
+        }
+        @media (max-width: 480px) {
+            .menu-container {
+                padding: 18px 8px 16px 8px;
+                max-width: 98vw;
+            }
+            .game-title {
+                font-size: 1.3rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="menu-container">
+        <div class="game-title">Tank Deathmatch</div>
+        <form id="menuForm" autocomplete="off">
+            <label for="username">Username</label>
+            <input type="text" id="username" maxlength="20" placeholder="Enter your username" autocomplete="off" required>
+            <button class="btn" id="joinBtn" type="submit">Join Game</button>
+            <div class="error-message" id="errorMessage"></div>
+        </form>
+    </div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="menu.js"></script>
+</body>
+</html> 
