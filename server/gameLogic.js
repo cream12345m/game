@@ -10,27 +10,96 @@ class TankGame {
     this.bulletLifetime = 2; // seconds
     this.shootCooldown = 0.3; // seconds
     // Responsive arena size
-    this.arenaWidth = 1200; // Normal size
-    this.arenaHeight = 800; // Normal size
+    this.arenaWidth = 7500; // New size
+    this.arenaHeight = 7500; // New size
     this.tankSize = 30;
     this.bulletSize = 6;
-    this.borderThickness = 24; // Match client border thickness
+    this.borderThickness = 150; // Proportional border
     
     // Game settings
     this.respawnTime = 3; // seconds
 
+    // Reposition 8 spawn points in a ring, well away from center, borders, and obstacles
+    this.spawnPoints = [];
+    const spawnRadius = Math.min(this.arenaWidth, this.arenaHeight) / 2 - 1200;
+    const centerX = this.arenaWidth / 2;
+    const centerY = this.arenaHeight / 2;
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * 2 * Math.PI + Math.PI/8;
+      const x = centerX + spawnRadius * Math.cos(angle);
+      const y = centerY + spawnRadius * Math.sin(angle);
+      this.spawnPoints.push({ x, y });
+    }
+
+    // Improved map: even more cover in open areas, especially outer map
     this.obstacles = [
       // Arena border as obstacles
       { x: 0, y: 0, w: this.arenaWidth, h: this.borderThickness }, // Top
       { x: 0, y: this.arenaHeight - this.borderThickness, w: this.arenaWidth, h: this.borderThickness }, // Bottom
       { x: 0, y: 0, w: this.borderThickness, h: this.arenaHeight }, // Left
       { x: this.arenaWidth - this.borderThickness, y: 0, w: this.borderThickness, h: this.arenaHeight }, // Right
-      // Map obstacles
-      { x: 300, y: 200, w: 120, h: 40 },
-      { x: 700, y: 400, w: 180, h: 50 },
-      { x: 500, y: 600, w: 80, h: 120 },
-      { x: 900, y: 150, w: 100, h: 40 },
-      { x: 200, y: 500, w: 60, h: 100 }
+      // Central open area with partial walls (no closed rooms)
+      { x: centerX - 200, y: centerY - 200, w: 400, h: 40 },
+      { x: centerX - 200, y: centerY + 160, w: 400, h: 40 },
+      { x: centerX - 200, y: centerY - 200, w: 40, h: 180 },
+      { x: centerX + 160, y: centerY - 200, w: 40, h: 180 },
+      { x: centerX - 200, y: centerY + 20, w: 40, h: 180 },
+      { x: centerX + 160, y: centerY + 20, w: 40, h: 180 },
+      // T-shapes and zig-zags (all open)
+      { x: centerX - 600, y: centerY - 400, w: 300, h: 40 },
+      { x: centerX - 600, y: centerY - 400, w: 40, h: 200 },
+      { x: centerX + 300, y: centerY + 300, w: 300, h: 40 },
+      { x: centerX + 560, y: centerY + 140, w: 40, h: 200 },
+      // Long corridors (not closed)
+      { x: centerX - 1000, y: centerY - 60, w: 800, h: 40 },
+      { x: centerX + 200, y: centerY - 60, w: 800, h: 40 },
+      { x: centerX - 60, y: centerY - 1000, w: 40, h: 800 },
+      { x: centerX - 60, y: centerY + 200, w: 40, h: 800 },
+      // Islands (cover in open areas)
+      { x: centerX - 900, y: centerY - 900, w: 80, h: 80 },
+      { x: centerX + 820, y: centerY - 900, w: 80, h: 80 },
+      { x: centerX - 900, y: centerY + 820, w: 80, h: 80 },
+      { x: centerX + 820, y: centerY + 820, w: 80, h: 80 },
+      { x: centerX, y: centerY - 1200, w: 80, h: 80 },
+      { x: centerX, y: centerY + 1120, w: 80, h: 80 },
+      // More partial walls and cover (no dead-ends)
+      { x: 600, y: 600, w: 200, h: 40 },
+      { x: 600, y: 900, w: 40, h: 200 },
+      { x: this.arenaWidth - 900, y: 600, w: 200, h: 40 },
+      { x: this.arenaWidth - 900 + 160, y: 900, w: 40, h: 200 },
+      { x: 600, y: this.arenaHeight - 900, w: 200, h: 40 },
+      { x: 600, y: this.arenaHeight - 900 + 160, w: 40, h: 200 },
+      { x: this.arenaWidth - 900, y: this.arenaHeight - 900, w: 200, h: 40 },
+      { x: this.arenaWidth - 900 + 160, y: this.arenaHeight - 900 + 160, w: 40, h: 200 },
+      // Extra islands and partial walls in outer/mid areas
+      { x: 1200, y: 2000, w: 120, h: 40 },
+      { x: 2000, y: 1200, w: 40, h: 120 },
+      { x: this.arenaWidth - 1400, y: 2000, w: 120, h: 40 },
+      { x: this.arenaWidth - 2200, y: 1200, w: 40, h: 120 },
+      { x: 1200, y: this.arenaHeight - 2000, w: 120, h: 40 },
+      { x: 2000, y: this.arenaHeight - 1200, w: 40, h: 120 },
+      { x: this.arenaWidth - 1400, y: this.arenaHeight - 2000, w: 120, h: 40 },
+      { x: this.arenaWidth - 2200, y: this.arenaHeight - 1200, w: 40, h: 120 },
+      { x: centerX - 1800, y: centerY, w: 120, h: 40 },
+      { x: centerX + 1680, y: centerY, w: 120, h: 40 },
+      { x: centerX, y: centerY - 1800, w: 40, h: 120 },
+      { x: centerX, y: centerY + 1680, w: 40, h: 120 },
+      // More islands and partial walls in outermost areas
+      { x: 400, y: 3000, w: 100, h: 40 },
+      { x: 3000, y: 400, w: 40, h: 100 },
+      { x: this.arenaWidth - 600, y: 3000, w: 100, h: 40 },
+      { x: this.arenaWidth - 3200, y: 400, w: 40, h: 100 },
+      { x: 400, y: this.arenaHeight - 3000, w: 100, h: 40 },
+      { x: 3000, y: this.arenaHeight - 600, w: 40, h: 100 },
+      { x: this.arenaWidth - 600, y: this.arenaHeight - 3000, w: 100, h: 40 },
+      { x: this.arenaWidth - 3200, y: this.arenaHeight - 600, w: 40, h: 100 },
+      // Cover near each spawn (not blocking, just offset)
+      ...this.spawnPoints.map(sp => ({
+        x: sp.x - 60 + 120 * Math.random(),
+        y: sp.y - 60 + 120 * Math.random(),
+        w: 120,
+        h: 60
+      }))
     ];
   }
 
@@ -49,7 +118,9 @@ class TankGame {
       respawnTime: 0,
       username: playerData.username || `Player_${socketId.slice(0, 6)}`,
       invincible: true,
-      invincibleTimer: 1.5
+      invincibleTimer: 1.5,
+      lastInputTime: Date.now(), // Initialize lastInputTime
+      lastServerUpdate: Date.now() // Track when we last sent an update
     };
     
   }
@@ -59,16 +130,63 @@ class TankGame {
     delete this.players[socketId];
   }
 
-  // Get a random spawn point within the arena (now: four corners)
+  // Improved spawn logic: no enemy within 700 units, at least one within 2000 units
   getRandomSpawnPoint() {
-    const margin = 50;
-    const corners = [
-      { x: margin, y: margin }, // top-left
-      { x: this.arenaWidth - margin, y: margin }, // top-right
-      { x: margin, y: this.arenaHeight - margin }, // bottom-left
-      { x: this.arenaWidth - margin, y: this.arenaHeight - margin } // bottom-right
-    ];
-    return corners[Math.floor(Math.random() * corners.length)];
+    const minSafeDist = 700;
+    const maxActionDist = 2000;
+    const alivePlayers = Object.values(this.players).filter(p => p.isAlive);
+    // For each spawn point, find the distance to the closest alive player
+    const spawnScores = this.spawnPoints.map(sp => {
+      let minDist = Infinity;
+      let maxDist = 0;
+      for (const p of alivePlayers) {
+        const dist = Math.hypot(sp.x - p.x, sp.y - p.y);
+        if (dist < minDist) minDist = dist;
+        if (dist > maxDist) maxDist = dist;
+      }
+      return { sp, minDist, maxDist };
+    });
+    // Filter: no enemy within minSafeDist, at least one within maxActionDist
+    const actionSpawns = spawnScores.filter(s => s.minDist > minSafeDist && s.maxDist < maxActionDist);
+    if (actionSpawns.length > 0) {
+      // Pick the one with the smallest minDist (closest to action, but not too close)
+      const best = actionSpawns.reduce((a, b) => (a.minDist < b.minDist ? a : b));
+      const collisionSize = this.tankSize * 0.9;
+      if (!this.collidesWithObstacle(best.sp.x, best.sp.y, collisionSize)) {
+        return { x: best.sp.x, y: best.sp.y };
+      }
+    }
+    // If all spawn points are unsafe, try up to 100 random safe locations
+    for (let attempt = 0; attempt < 100; attempt++) {
+      // Avoid the center battle zone (e.g., 800x800 around center)
+      const margin = this.tankSize * 2 + this.borderThickness;
+      let x = margin + Math.random() * (this.arenaWidth - 2 * margin);
+      let y = margin + Math.random() * (this.arenaHeight - 2 * margin);
+      // Avoid center
+      const centerX = this.arenaWidth / 2;
+      const centerY = this.arenaHeight / 2;
+      if (Math.abs(x - centerX) < 400 && Math.abs(y - centerY) < 400) continue;
+      // Not in obstacle
+      const collisionSize = this.tankSize * 0.9;
+      if (this.collidesWithObstacle(x, y, collisionSize)) continue;
+      // Not within minSafeDist of any player
+      let safe = true;
+      for (const p of alivePlayers) {
+        if (Math.hypot(x - p.x, y - p.y) < minSafeDist) {
+          safe = false;
+          break;
+        }
+      }
+      if (safe) return { x, y };
+    }
+    // Fallback: pick the spawn with the largest minDist (as safe as possible)
+    const best = spawnScores.reduce((a, b) => (a.minDist > b.minDist ? a : b));
+    const collisionSize = this.tankSize * 0.9;
+    if (!this.collidesWithObstacle(best.sp.x, best.sp.y, collisionSize)) {
+      return { x: best.sp.x, y: best.sp.y };
+    }
+    // Fallback: center of the map
+    return { x: this.arenaWidth / 2, y: this.arenaHeight / 2 };
   }
 
   // Handle player input (movement and shooting)
@@ -76,48 +194,80 @@ class TankGame {
     const player = this.players[socketId];
     if (!player || !player.isAlive) return;
 
-    const { keys, mouseX, mouseY, shoot } = input;
-    
+    // Anti-cheat: Ignore input if player is dead or respawning
+    if (!player.isAlive || player.respawnTime > 0) return;
+
+    const { keys, mouseX, mouseY, shoot, clientTime } = input;
+
+    // Anti-cheat: Rate-limit input (ignore if too frequent)
+    const nowServer = Date.now();
+    if (player.lastInputTime && clientTime && clientTime - player.lastInputTime < 1000 / this.tickRate * 0.5) {
+      // Log suspicious input frequency
+      console.log(`[ANTICHEAT] Player ${socketId} sent input too frequently. Ignored.`);
+      return;
+    }
+    player.lastInputTime = clientTime || nowServer;
+
     // Update player angle based on mouse position
     if (mouseX !== undefined && mouseY !== undefined) {
       player.angle = Math.atan2(mouseY - player.y, mouseX - player.x);
     }
-    
+
     // Handle movement
     const moveSpeed = 200; // pixels per second
     let vx = 0, vy = 0;
-    
+
     if (keys.w || keys.ArrowUp) vy -= moveSpeed;
     if (keys.s || keys.ArrowDown) vy += moveSpeed;
     if (keys.a || keys.ArrowLeft) vx -= moveSpeed;
     if (keys.d || keys.ArrowRight) vx += moveSpeed;
-    
+
     // Normalize diagonal movement
     if (vx !== 0 && vy !== 0) {
       vx *= 0.707; // 1/√2
       vy *= 0.707;
     }
-    
-    // Try move, but block on obstacles and border
-    let newX = player.x + vx / this.tickRate;
-    let newY = player.y + vy / this.tickRate;
+
+    // Anti-cheat: Prevent teleporting (limit max movement per tick)
+    const maxMovePerTick = moveSpeed / this.tickRate * 1.05; // 5% leeway
+    let dx = vx / this.tickRate;
+    let dy = vy / this.tickRate;
+    if (Math.abs(dx) > maxMovePerTick) {
+      console.log(`[ANTICHEAT] Player ${socketId} tried to move too fast in X (${dx}). Clamped.`);
+      dx = Math.sign(dx) * maxMovePerTick;
+    }
+    if (Math.abs(dy) > maxMovePerTick) {
+      console.log(`[ANTICHEAT] Player ${socketId} tried to move too fast in Y (${dy}). Clamped.`);
+      dy = Math.sign(dy) * maxMovePerTick;
+    }
+
+    let newX = player.x + dx;
+    let newY = player.y + dy;
     // Use a slightly larger collision box for stricter blocking
     const collisionSize = this.tankSize * 0.9;
-    if (!this.collidesWithObstacle(newX, player.y, collisionSize) &&
-        newX >= this.tankSize/2 && newX <= this.arenaWidth - this.tankSize/2) player.x = newX;
-    if (!this.collidesWithObstacle(player.x, newY, collisionSize) &&
-        newY >= this.tankSize/2 && newY <= this.arenaHeight - this.tankSize/2) player.y = newY;
-    
-    // Keep player within arena bounds
-    player.x = Math.max(this.tankSize/2, Math.min(this.arenaWidth - this.tankSize/2, player.x));
-    player.y = Math.max(this.tankSize/2, Math.min(this.arenaHeight - this.tankSize/2, player.y));
-    
+    if (!this.collidesWithObstacle(newX, player.y, collisionSize)) player.x = newX;
+    if (!this.collidesWithObstacle(player.x, newY, collisionSize)) player.y = newY;
+    // No special border clamping needed; borders are just obstacles now
+
+    // Clamp player within arena bounds (respect border thickness)
+    const clampedX = Math.max(this.borderThickness + this.tankSize/2, Math.min(this.arenaWidth - this.borderThickness - this.tankSize/2, player.x));
+    const clampedY = Math.max(this.borderThickness + this.tankSize/2, Math.min(this.arenaHeight - this.borderThickness - this.tankSize/2, player.y));
+    if (player.x !== clampedX || player.y !== clampedY) {
+      console.log(`[ANTICHEAT] Player ${socketId} tried to leave arena bounds. Clamped.`);
+    }
+    player.x = clampedX;
+    player.y = clampedY;
+
     // Handle shooting
     if (shoot) {
       const now = Date.now() / 1000;
+      // Anti-cheat: Enforce shooting cooldown strictly
       if (now - player.lastShot >= this.shootCooldown) {
         this.spawnBullet(socketId);
         player.lastShot = now;
+      } else {
+        // Log rapid-fire attempt
+        console.log(`[ANTICHEAT] Player ${socketId} tried to shoot too fast. Ignored.`);
       }
     }
   }
@@ -146,6 +296,8 @@ class TankGame {
     };
     
     this.bullets.push(bullet);
+    // Emit bulletFired event to shooter for sound sync
+    this.io.to(ownerId).emit('bulletFired');
   }
 
   // Update game state (called every frame)
@@ -181,7 +333,7 @@ class TankGame {
         this.io.sockets.emit('bulletImpact', { x: bullet.x, y: bullet.y, type: 'border' });
         return false;
       }
-      // Check bullet-obstacle collisions
+      // Check bullet-obstacle collisions (including border obstacles)
       if (this.collidesWithObstacle(bullet.x, bullet.y, this.bulletSize * 2)) {
         // Impact at wall/obstacle
         this.io.sockets.emit('bulletImpact', { x: bullet.x, y: bullet.y, type: 'wall' });
