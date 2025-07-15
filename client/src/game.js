@@ -499,12 +499,17 @@ class TankGameClient {
     }
     
     render() {
-        // Camera follows player, but add margin to avoid minimap overlap
+        // Camera follows the PREDICTED position of the local player for smoothness
         let camX = 0, camY = 0;
         const minimapMargin = 180; // px
-        if (this.myId && this.players[this.myId]) {
-            camX = this.players[this.myId].x - this.viewportWidth / 2;
-            camY = this.players[this.myId].y - this.viewportHeight / 2;
+        let localPlayer = this.players[this.myId];
+        // Use predicted position if available
+        if (this.myId && this.predictedPlayers[this.myId]) {
+            localPlayer = this.predictedPlayers[this.myId];
+        }
+        if (this.myId && localPlayer) {
+            camX = localPlayer.x - this.viewportWidth / 2;
+            camY = localPlayer.y - this.viewportHeight / 2;
             // Clamp camera to map bounds, but add margin for minimap
             camX = Math.max(minimapMargin, Math.min(this.arenaWidth - this.viewportWidth, camX));
             camY = Math.max(minimapMargin, Math.min(this.arenaHeight - this.viewportHeight, camY));
@@ -578,11 +583,16 @@ class TankGameClient {
         // Optimized rendering: only draw visible players
         Object.entries(this.players).forEach(([id, player]) => {
             if (!player.isAlive) return;
+            let renderPlayer = player;
+            // For the local player, use the predicted position for rendering
+            if (id === this.myId && this.predictedPlayers[this.myId]) {
+                renderPlayer = this.predictedPlayers[this.myId];
+            }
             if (
-                player.x + this.tankSize/2 > 0 && // Always draw players in world coordinates
-                player.x - this.tankSize/2 < this.arenaWidth &&
-                player.y + this.tankSize/2 > 0 && // Always draw players in world coordinates
-                player.y - this.tankSize/2 < this.arenaHeight
+                renderPlayer.x + this.tankSize/2 > 0 &&
+                renderPlayer.x - this.tankSize/2 < this.arenaWidth &&
+                renderPlayer.y + this.tankSize/2 > 0 &&
+                renderPlayer.y - this.tankSize/2 < this.arenaHeight
             ) {
                 const isMe = id === this.myId;
                 // Draw invincibility aura if player is invincible
@@ -600,13 +610,13 @@ class TankGameClient {
                 }
                 // Draw happy face (entire face rotates to aim at mouse, mouth at front)
                 this.ctx.save();
-                this.ctx.translate(player.x, player.y);
+                this.ctx.translate(renderPlayer.x, renderPlayer.y);
                 // Calculate angle from face to mouse
                 let faceAngle = 0;
                 if (id === this.myId && this.mouseInside) {
-                    faceAngle = Math.atan2(this.mouseY - player.y, this.mouseX - player.x);
-                } else if (player.angle !== undefined) {
-                    faceAngle = player.angle;
+                    faceAngle = Math.atan2(this.mouseY - renderPlayer.y, this.mouseX - renderPlayer.x);
+                } else if (renderPlayer.angle !== undefined) {
+                    faceAngle = renderPlayer.angle;
                 }
                 // Rotate so mouth is at the front (anticlockwise 90deg)
                 this.ctx.rotate(faceAngle - Math.PI/2);
@@ -905,26 +915,26 @@ class TankGameClient {
         // Use interpolated data for rendering
         this.players = this.interpolatedPlayers;
         this.bullets = this.interpolatedBullets;
-        
-        // Apply client-side prediction for local player with reconciliation
+        // Apply client-side prediction for local player with smoothing reconciliation
         if (this.myId && this.predictedPlayers[this.myId]) {
             const serverPlayer = this.interpolatedPlayers[this.myId];
             const predictedPlayer = this.predictedPlayers[this.myId];
-            
             if (serverPlayer) {
-                // Check if server position is too different from prediction (anti-cheat caught something)
+                // Check if server position is too different from prediction
                 const distance = Math.hypot(serverPlayer.x - predictedPlayer.x, serverPlayer.y - predictedPlayer.y);
-                
                 if (distance > this.reconciliationThreshold) {
                     // Server caught cheating or major desync - snap to server position
-                    this.players[this.myId] = serverPlayer;
-                    console.log('Reconciling with server position - possible desync detected');
+                    this.predictedPlayers[this.myId] = { ...serverPlayer };
+                    this.players[this.myId] = { ...serverPlayer };
+                    // Optionally, log or show a warning
                 } else {
-                    // Use prediction for smooth movement
-                    this.players[this.myId] = {
-                        ...serverPlayer,
-                        ...predictedPlayer
-                    };
+                    // Smoothly lerp predicted position toward server position
+                    const smoothing = 0.15; // 0 = no smoothing, 1 = instant snap
+                    this.predictedPlayers[this.myId].x += (serverPlayer.x - predictedPlayer.x) * smoothing;
+                    this.predictedPlayers[this.myId].y += (serverPlayer.y - predictedPlayer.y) * smoothing;
+                    this.predictedPlayers[this.myId].angle = this.interpolateAngle(predictedPlayer.angle, serverPlayer.angle, smoothing);
+                    // Use predicted for rendering
+                    this.players[this.myId] = this.predictedPlayers[this.myId];
                 }
             } else {
                 // No server data yet, use prediction
