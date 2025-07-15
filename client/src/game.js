@@ -336,6 +336,8 @@ class TankGameClient {
         }
         predicted.angle = Math.atan2(this.mouseY - predicted.y, this.mouseX - predicted.x);
         this.predictedPlayers[this.myId] = { ...predicted };
+        // Overwrite players[myId] with predicted state for instant rendering
+        this.players[this.myId] = this.predictedPlayers[this.myId];
     }
     
     updateUI() {
