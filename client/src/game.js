@@ -298,12 +298,7 @@ class TankGameClient {
     
     sendInput() {
         if (!this.myId || !this.isAlive || !this.mouseInside) return;
-        
-        // Apply client-side prediction for local player
-        this.predictLocalPlayer();
-        
-        // Send input to server with timestamp for anti-cheat
-        // Send mouseX/mouseY in world coordinates
+        // No longer call predictLocalPlayer() here; it's now in gameLoop
         this.socket.emit('playerInput', {
             keys: this.keys,
             mouseX: this.mouseX,
@@ -795,23 +790,19 @@ class TankGameClient {
             this.fps = Math.round(1000 / deltaTime);
         }
         this.lastFrameTime = currentTime;
-        
         // Update effects
         this.updateEffects();
-        
         // Interpolate game state for smooth rendering
         this.interpolateGameState();
-        
+        // Always run prediction for local player before rendering (fixes input delay)
+        this.predictLocalPlayer();
         // Send input
         this.sendInput();
-        
         // Render
         this.render();
-        
         // Update UI
         this.updateUI();
         this.updateQuitBarPosition();
-        
         // Continue loop
         requestAnimationFrame((time) => this.gameLoop(time));
     }
