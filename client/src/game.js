@@ -4,9 +4,7 @@ class TankGameClient {
     constructor() {
         this.canvas = document.getElementById('gameCanvas');
         this.ctx = this.canvas.getContext('2d');
-        // Remove responsive canvas sizing
-        // window.addEventListener('resize', () => this.resizeCanvas());
-        // this.resizeCanvas();
+        // Removed legacy responsive canvas resizing code
         
         // Get parameters from URL
         this.gameParams = this.getUrlParameters();
@@ -317,48 +315,32 @@ class TankGameClient {
     
     predictLocalPlayer() {
         if (!this.myId || !this.players[this.myId]) return;
-        // Prevent prediction if obstacles are not loaded
         if (!this.obstacles || this.obstacles.length === 0) return;
-        
-        const player = this.players[this.myId];
+        // Use a separate prediction state, never mutate server state
+        const serverPlayer = this.players[this.myId];
+        let predicted = this.predictedPlayers[this.myId] || { ...serverPlayer };
         const moveSpeed = 200; // pixels per second
         let vx = 0, vy = 0;
-        
-        // Calculate movement based on input
         if (this.keys.w || this.keys.ArrowUp) vy -= moveSpeed;
         if (this.keys.s || this.keys.ArrowDown) vy += moveSpeed;
         if (this.keys.a || this.keys.ArrowLeft) vx -= moveSpeed;
         if (this.keys.d || this.keys.ArrowRight) vx += moveSpeed;
-        
-        // Normalize diagonal movement
         if (vx !== 0 && vy !== 0) {
             vx *= 0.707;
             vy *= 0.707;
         }
-        
-        // Apply movement to predicted position
-        const deltaTime = 1 / 60; // Assuming 60 FPS
-        let predictedX = player.x + vx * deltaTime;
-        let predictedY = player.y + vy * deltaTime;
+        const deltaTime = 1 / 60;
+        let predictedX = predicted.x + vx * deltaTime;
+        let predictedY = predicted.y + vy * deltaTime;
         const collisionSize = this.tankSize * 0.9;
-        // Client-side obstacle collision (same as server)
-        if (!this.collidesWithObstacle(predictedX, player.y, collisionSize)) {
-            // Only update X if not colliding
-            player.x = predictedX;
+        if (!this.collidesWithObstacle(predictedX, predicted.y, collisionSize)) {
+            predicted.x = predictedX;
         }
-        if (!this.collidesWithObstacle(player.x, predictedY, collisionSize)) {
-            // Only update Y if not colliding
-            player.y = predictedY;
+        if (!this.collidesWithObstacle(predicted.x, predictedY, collisionSize)) {
+            predicted.y = predictedY;
         }
-        // No special border clamping needed; borders are just obstacles now
-        // Store prediction for reconciliation
-        // Use world mouse coordinates for angle
-        player.angle = Math.atan2(this.mouseY - player.y, this.mouseX - player.x);
-        this.predictedPlayers[this.myId] = {
-            x: player.x,
-            y: player.y,
-            angle: player.angle
-        };
+        predicted.angle = Math.atan2(this.mouseY - predicted.y, this.mouseX - predicted.x);
+        this.predictedPlayers[this.myId] = { ...predicted };
     }
     
     updateUI() {
@@ -793,20 +775,17 @@ class TankGameClient {
     updateQuitBarPosition() {
         const quitBarContainer = document.getElementById('quitBarContainer');
         if (!quitBarContainer || !this.myId || !this.players[this.myId]) return;
-        // Get player position in screen (canvas) coordinates
+        // Ensure the bar is visible before measuring
+        quitBarContainer.style.display = 'block';
         const player = this.players[this.myId];
-        // Project world to screen coordinates using camera offset
-        const screenX = player.x - this.cameraX;
-        const screenY = player.y - this.cameraY;
-        // Get canvas position and scale
         const canvas = this.canvas;
         const rect = canvas.getBoundingClientRect();
         const scaleX = rect.width / canvas.width;
         const scaleY = rect.height / canvas.height;
-        // Position the bar above the player (30px above)
-        quitBarContainer.style.left = (rect.left + screenX * scaleX - quitBarContainer.offsetWidth/2) + 'px';
-        quitBarContainer.style.top = (rect.top + (screenY - 60) * scaleY) + 'px';
+        quitBarContainer.style.left = (rect.left + (player.x - this.cameraX) * scaleX - quitBarContainer.offsetWidth/2) + 'px';
+        quitBarContainer.style.top = (rect.top + (player.y - this.cameraY - 60) * scaleY) + 'px';
         quitBarContainer.style.position = 'fixed';
+        // Optionally hide again if needed elsewhere
     }
     
     gameLoop(currentTime) {
@@ -915,6 +894,11 @@ class TankGameClient {
         // Use interpolated data for rendering
         this.players = this.interpolatedPlayers;
         this.bullets = this.interpolatedBullets;
+        // Clean up players/bullets that no longer exist on the server
+        const serverPlayerIds = new Set(Object.keys(nextUpdate.players));
+        Object.keys(this.predictedPlayers).forEach(pid => {
+            if (!serverPlayerIds.has(pid)) delete this.predictedPlayers[pid];
+        });
         // Apply client-side prediction for local player with smoothing reconciliation
         if (this.myId && this.predictedPlayers[this.myId]) {
             const serverPlayer = this.interpolatedPlayers[this.myId];
